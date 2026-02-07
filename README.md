@@ -1,124 +1,134 @@
-# StellarPay Bridge
+# 🚀 StellarBridge Pay
 
-A crypto-to-fiat payment bridge connecting Stellar (XLM) with UPI payments.
+StellarBridge Pay is a crypto-to-UPI payment bridge powered by the Stellar blockchain that enables users to pay anywhere using XLM, even when merchants only accept UPI.
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- Node.js 18+
+## 📄 Project Description
+
+StellarBridge Pay bridges blockchain payments (Stellar/XLM) with real-world UPI payments.  
+It allows crypto holders to spend XLM in everyday life while merchants handle UPI payments and receive crypto securely through smart-contract escrow.
+
+---
+
+## 📍 Smart Contract Address
+
+Soroban Escrow Contract (Stellar Testnet):
+
+CC2DFCND6UJENJGHP6PEZ7NA4EZCS7Z5LPE3OTX2QEEMFMVTDLG7KYFH
+
+---
+
+## ❗ Problem Statement
+
+Crypto adoption is growing, but real-world usability remains limited.
+
+- Most merchants do not accept crypto
+- UPI dominates daily payments in India
+- Users must convert crypto → withdraw → pay via UPI
+- This process is slow, costly, and inconvenient
+- Peer-to-peer systems are vulnerable to fraud and misuse
+
+As a result, crypto is still impractical for everyday payments.
+
+---
+
+## 💡 Solution
+
+StellarBridge Pay introduces a crypto-to-UPI bridge using a merchant-proxy model secured by Soroban smart-contract escrow.
+
+- Users pay in XLM
+- Merchants pay in UPI
+- Funds are locked on-chain until payment is confirmed
+- Settlement is trustless and blockchain-verified
+
+An automated monitoring agent detects suspicious activity and automatically flags or bans abusive users or merchants.
+
+---
+
+## ✨ Features
+
+- Real Stellar wallet creation on signup
+- Crypto (XLM) to UPI payment bridging
+- UPI QR code scanning
+- Soroban smart-contract escrow
+- User and Merchant role separation
+- Automated fraud and abuse detection agent
+- Fast, low-fee Stellar transactions
+- Transaction history and status tracking
+
+---
+
+## 🏗️ Architecture Overview
+
+Frontend:
+- Next.js
+- Tailwind CSS
+- QR Scanner integration
+
+Backend:
+- Node.js
+- Express.js
 - PostgreSQL
-- Rust (for Soroban contract)
+- Prisma ORM
+- Stellar SDK
 
-### 1. Clone and Setup
-```bash
-git clone <your-repo>
-cd stellarbridge-pay
-```
+Blockchain:
+- Stellar Testnet
+- Soroban Smart Contracts (Rust)
 
-### 2. Backend Setup
-```bash
-cd backend
-npm install
-cp .env.example .env
-# Edit .env with your database URL and secrets
-npm run db:generate
-npm run db:push
-npm run dev
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run dev
-```
-
-### 4. Contract Setup
-```bash
-cd soroban-contract
-cargo build --target wasm32-unknown-unknown --release
-```
-
-### 5. Quick Start (Windows)
-```bash
-./start.bat
-```
-
-## 🌟 Features
-
-- **Dual Role System**: Users and Merchants
-- **Automatic Stellar Wallets**: Generated on signup
-- **Payment Bridge**: Crypto → UPI payments
-- **Escrow System**: Soroban smart contracts
-- **Real-time Updates**: Payment status tracking
-
-## 🔄 Payment Flow
-
-1. User creates payment request with merchant email and UPI ID
-2. XLM is locked in Soroban escrow contract
-3. Merchant receives notification
-4. Merchant pays via UPI manually
-5. Merchant clicks "I PAID" button
-6. Smart contract releases XLM to merchant
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express, Prisma, PostgreSQL
-- **Blockchain**: Stellar SDK, Soroban (Rust)
-- **Auth**: JWT tokens
-
-## 📱 Usage
-
-1. **Signup**: Choose USER or MERCHANT role
-2. **Users**: Create payment requests by entering merchant email and UPI details
-3. **Merchants**: View incoming requests and confirm UPI payments
-4. **Smart Contract**: Automatically handles XLM escrow and release
-
-## 🔐 Security
-
-- Encrypted private keys in database
-- JWT authentication
-- Soroban smart contract escrow
-- Input validation and sanitization
-
-## 🚧 MVP Limitations
-
-- Manual UPI confirmation (no automatic verification)
-- Testnet only
-- Basic UI/UX
-- Mock price feeds
-
-## 📝 Environment Variables
-
-### Backend (.env)
-```
-DATABASE_URL="postgresql://username:password@localhost:5432/stellarpay"
-JWT_SECRET="your-super-secret-jwt-key"
-STELLAR_NETWORK="testnet"
-ENCRYPTION_KEY="your-32-char-encryption-key-here"
-PORT=3001
-```
-
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_API_URL=http://localhost:3001
-```
-
-## 🎯 Demo Flow
-
-1. Register as MERCHANT with email: merchant@test.com
-2. Register as USER with email: user@test.com
-3. User creates payment to merchant@test.com
+Flow:
+1. User initiates payment
+2. XLM locked in escrow contract
+3. Merchant pays via UPI
 4. Merchant confirms payment
-5. XLM transferred automatically
+5. Smart contract releases XLM
+6. Monitoring agent checks for suspicious behavior
 
-## 📞 Support
+---
 
-This is a hackathon MVP. For production use, implement:
-- Real UPI verification
+## 🖼️ Screenshots
+
+/screenshots
+- landing-page.png
+- login-page.png
+- user-dashboard.png
+- merchant-dashboard.png
+
+---
+
+## 🌐 Deployed Link
+
+Frontend:
+DEPLOYED_FRONTEND_URL
+
+Backend API:
+DEPLOYED_BACKEND_URL
+
+---
+
+## 🚀 Future Scope and Plans
+
+- Automated UPI payment verification
+- Merchant reputation and trust scoring
+- Cross-border remittances
+- Mobile application
 - Mainnet deployment
-- Enhanced security
-- Better error handling
-- Mobile responsiveness
+- AI-powered risk scoring
+- Multi-currency support
+
+---
+
+## 🏷️ Project Category
+
+- Crypto-to-Fiat Payment Bridge
+- Web3 Payments Infrastructure
+- Smart-Contract Escrow System
+- Financial Inclusion Platform
+
+---
+
+## 📜 License
+
+MIT License
+
