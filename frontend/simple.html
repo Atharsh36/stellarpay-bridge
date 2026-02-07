@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StellarPay Bridge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div id="app" class="w-full max-w-md">
+        <!-- Auth Form -->
+        <div id="authForm" class="bg-white rounded-2xl shadow-xl p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">StellarPay Bridge</h1>
+                <p class="text-gray-500 text-sm">Connect crypto with UPI payments</p>
+            </div>
+            
+            <form id="signupForm" class="space-y-6">
+                <input 
+                    type="email" 
+                    id="email" 
+                    placeholder="Email address" 
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                >
+                <input 
+                    type="password" 
+                    id="password" 
+                    placeholder="Password" 
+                    class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                >
+                <select id="role" class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="USER">User</option>
+                    <option value="MERCHANT">Merchant</option>
+                </select>
+                <button 
+                    type="submit" 
+                    id="submitBtn"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors"
+                >
+                    Create Wallet & Sign Up
+                </button>
+            </form>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden bg-white rounded-2xl shadow-xl p-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">🎉 Wallet Created!</h1>
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                <p class="text-sm text-gray-600 mb-1">Your Stellar Wallet</p>
+                <p id="walletAddress" class="font-mono text-xs text-gray-800 break-all mb-2"></p>
+                <p class="text-lg font-semibold text-blue-600">
+                    💰 <span id="balance">0.00</span> XLM 
+                    <button 
+                        id="refreshBtn" 
+                        onclick="refreshBalance()" 
+                        class="ml-2 bg-blue-500 text-white px-2 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+                    >
+                        🔄
+                    </button>
+                </p>
+                <p class="text-sm text-green-600 mt-2">✅ Real Stellar Testnet Wallet Created!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userToken = null;
+        
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.textContent = 'Creating Wallet...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await axios.post('http://localhost:3001/api/auth/signup', {
+                    email,
+                    password,
+                    role
+                });
+                
+                console.log('Signup successful:', response.data);
+                userToken = response.data.token;
+                
+                // Show dashboard
+                document.getElementById('authForm').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                document.getElementById('walletAddress').textContent = response.data.user.stellarPublicKey;
+                
+                // Fetch initial balance
+                refreshBalance();
+                
+            } catch (error) {
+                console.error('Signup failed:', error);
+                alert('Signup failed: ' + (error.response?.data?.error || error.message));
+                submitBtn.textContent = 'Create Wallet & Sign Up';
+                submitBtn.disabled = false;
+            }
+        });
+        
+        async function refreshBalance() {
+            if (!userToken) return;
+            
+            const refreshBtn = document.getElementById('refreshBtn');
+            const walletAddress = document.getElementById('walletAddress').textContent;
+            
+            refreshBtn.textContent = '⏳';
+            refreshBtn.disabled = true;
+            
+            try {
+                // Direct call to Stellar API
+                const response = await axios.get(`https://horizon-testnet.stellar.org/accounts/${walletAddress}`);
+                
+                const xlmBalance = response.data.balances.find(b => b.asset_type === 'native');
+                const balance = xlmBalance ? parseFloat(xlmBalance.balance) : 0;
+                
+                document.getElementById('balance').textContent = balance.toFixed(2);
+                
+            } catch (error) {
+                if (error.response?.status === 404) {
+                    document.getElementById('balance').textContent = '0.00';
+                } else {
+                    console.error('Balance fetch failed:', error);
+                }
+            } finally {
+                refreshBtn.textContent = '🔄';
+                refreshBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

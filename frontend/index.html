@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StellarPay Bridge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBggDWR50FP6DxSNeAhGrVF_G3jffXJYkI",
+            authDomain: "stellarpay-demo.firebaseapp.com",
+            projectId: "stellarpay-demo",
+            storageBucket: "stellarpay-demo.firebasestorage.app",
+            messagingSenderId: "879788942660",
+            appId: "1:879788942660:web:885c309620973349d5e311",
+            measurementId: "G-1PP4QSNZKC"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        window.firebaseAuth = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, doc, setDoc, getDoc };
+    </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div id="app" class="w-full max-w-md">
+        <!-- Auth Form -->
+        <div id="authForm" class="bg-white rounded-2xl shadow-xl p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">StellarPay Bridge</h1>
+                <p class="text-gray-500 text-sm">Connect crypto with UPI payments</p>
+            </div>
+            
+            <form onsubmit="handleAuth(event)" class="space-y-6">
+                <div>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        placeholder="Email address" 
+                        class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        required
+                    >
+                </div>
+                
+                <div>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Password" 
+                        class="w-full px-4 py-4 bg-gray-50 border-2 border-blue-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        required
+                    >
+                </div>
+                
+                <div id="roleSection" class="hidden">
+                    <select id="role" class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                        <option value="USER">User</option>
+                        <option value="MERCHANT">Merchant</option>
+                    </select>
+                </div>
+                
+                <button 
+                    type="submit" 
+                    id="submitBtn" 
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    Sign Up
+                </button>
+            </form>
+            
+            <div class="text-center mt-6">
+                <span class="text-gray-600" id="toggleText">Already have an account?</span>
+                <button 
+                    id="toggleBtn" 
+                    class="text-blue-500 hover:text-blue-600 font-medium ml-1 transition-colors"
+                >
+                    Login
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden space-y-6">
+            <!-- Header Card -->
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h1 id="dashboardTitle" class="text-2xl font-bold text-gray-800">Dashboard</h1>
+                        <p id="userEmail" class="text-gray-500"></p>
+                    </div>
+                    <button 
+                        id="logoutBtn" 
+                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                        Logout
+                    </button>
+                </div>
+                
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                    <p class="text-sm text-gray-600 mb-1">Stellar Wallet</p>
+                    <p id="stellarKey" class="font-mono text-xs text-gray-800 break-all mb-2"></p>
+                    <p class="text-lg font-semibold text-blue-600">
+                        💰 <span id="balance">0</span> XLM
+                    </p>
+                </div>
+            </div>
+
+            <!-- User Wallet Section -->
+            <div id="userWallet" class="bg-white rounded-2xl shadow-xl p-6 hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">💼 My Wallet</h2>
+                
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold text-gray-800">XLM Balance</h3>
+                        <button onclick="refreshBalance()" class="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                    <p class="text-2xl font-bold text-blue-600 mb-2">
+                        💰 <span id="walletBalance">0.00</span> XLM
+                    </p>
+                    <p class="text-sm text-gray-600">Available for payments</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <h4 class="font-medium text-gray-800 mb-2">Wallet Address</h4>
+                    <div class="flex items-center space-x-2">
+                        <input 
+                            type="text" 
+                            id="walletAddress" 
+                            class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-mono" 
+                            readonly
+                        >
+                        <button 
+                            onclick="copyAddress()" 
+                            class="bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                        >
+                            📋 Copy
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Send XLM to this address to add funds</p>
+                </div>
+                
+                <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p class="text-sm text-green-800">
+                        ✅ <strong>Real Stellar Wallet:</strong> This is a genuine Stellar testnet address. 
+                        <a href="https://stellar.expert/explorer/testnet" target="_blank" class="text-blue-600 hover:underline">Verify on Stellar Explorer</a>
+                    </p>
+                </div>
+            </div>
+            <div id="merchantDeposit" class="bg-white rounded-2xl shadow-xl p-6 hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">💰 Deposit Funds</h2>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-yellow-800">
+                        <strong>⚠️ Deposit Required:</strong> Merchants must deposit XLM as collateral to receive payments.
+                    </p>
+                </div>
+                
+                <form id="depositForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Deposit Amount (XLM)</label>
+                        <input 
+                            type="number" 
+                            id="depositAmount" 
+                            placeholder="Enter XLM amount (min 100)" 
+                            min="100"
+                            step="0.01"
+                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            required
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition-colors"
+                    >
+                        🔒 Deposit XLM as Collateral
+                    </button>
+                </form>
+                
+                <div id="depositStatus" class="mt-4 p-3 bg-gray-50 rounded-lg hidden">
+                    <p class="text-sm text-gray-600">Current Deposit: <span id="currentDeposit" class="font-semibold">0</span> XLM</p>
+                </div>
+            </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-4">💸 Create Payment</h2>
+                <form id="createPaymentForm" class="space-y-4">
+                    <input 
+                        type="email" 
+                        id="merchantEmail" 
+                        placeholder="Merchant Email" 
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                    <input 
+                        type="text" 
+                        id="upiId" 
+                        placeholder="UPI ID (e.g., merchant@paytm)" 
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                    <input 
+                        type="number" 
+                        id="amount" 
+                        placeholder="Amount in ₹ INR" 
+                        class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                    <button 
+                        type="submit" 
+                        class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors"
+                    >
+                        🚀 Create Payment Request
+                    </button>
+                </form>
+            </div>
+
+            <!-- Payment Requests -->
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 id="requestsTitle" class="text-xl font-bold text-gray-800 mb-4">📋 Payment Requests</h2>
+                <div id="paymentRequests" class="space-y-3"></div>
+                <div id="noRequests" class="text-center py-8 text-gray-500">
+                    <p class="text-4xl mb-2">📭</p>
+                    <p>No payment requests yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001';
+        let isLogin = false;
+        let currentUser = null;
+        let firebaseUser = null;
+
+        // DOM elements
+        const authForm = document.getElementById('authForm');
+        const dashboard = document.getElementById('dashboard');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const toggleText = document.getElementById('toggleText');
+        const submitBtn = document.getElementById('submitBtn');
+        const roleSection = document.getElementById('roleSection');
+        const paymentForm = document.getElementById('paymentForm');
+        const createPaymentForm = document.getElementById('createPaymentForm');
+
+        // Wait for Firebase to load
+        window.addEventListener('load', () => {
+            if (window.firebaseAuth) {
+                const { auth, onAuthStateChanged } = window.firebaseAuth;
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        firebaseUser = user;
+                        loadUserProfile(user.uid);
+                    } else {
+                        firebaseUser = null;
+                        showAuthForm();
+                    }
+                });
+            }
+        });
+
+        // Toggle between login and signup
+        toggleBtn.addEventListener('click', () => {
+            isLogin = !isLogin;
+            if (isLogin) {
+                submitBtn.textContent = 'Login';
+                toggleText.textContent = "Don't have an account?";
+                toggleBtn.textContent = 'Sign Up';
+                roleSection.classList.add('hidden');
+            } else {
+                submitBtn.textContent = 'Sign Up';
+                toggleText.textContent = 'Already have an account?';
+                toggleBtn.textContent = 'Login';
+                roleSection.classList.remove('hidden');
+            }
+        });
+
+        // Fetch real balance from Stellar network
+        async function fetchRealBalance(publicKey) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get('http://localhost:3001/api/wallet/me', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                const balance = parseFloat(response.data.balance);
+                const balanceElement = document.getElementById('balance');
+                if (balanceElement) {
+                    balanceElement.textContent = balance.toFixed(2);
+                }
+                
+                // Update wallet balance in user wallet section
+                const walletBalanceElement = document.getElementById('walletBalance');
+                if (walletBalanceElement) {
+                    walletBalanceElement.textContent = balance.toFixed(2);
+                }
+                
+                // Show real funding status
+                if (balanceElement && balanceElement.parentElement) {
+                    if (balance > 0) {
+                        balanceElement.parentElement.innerHTML += 
+                            '<p class="text-sm text-green-600 mt-1">✅ Real Stellar Account - Live Balance</p>' +
+                            '<button onclick="refreshBalance()" class="text-xs text-blue-500 hover:underline mt-1">🔄 Refresh Balance</button>' +
+                            '<p class="text-xs text-gray-500 mt-1">Send XLM to this address to see balance update</p>';
+                    } else {
+                        balanceElement.parentElement.innerHTML += 
+                            '<p class="text-sm text-orange-600 mt-1">⏳ Account created, funding in progress...</p>';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch balance:', error);
+                const balanceElement = document.getElementById('balance');
+                if (balanceElement) {
+                    balanceElement.textContent = '0.00';
+                }
+            }
+        }
+
+        // Refresh balance function
+        window.refreshBalance = async function() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await axios.get('http://localhost:3001/api/wallet/me', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                const balance = parseFloat(response.data.balance);
+                const balanceElement = document.getElementById('balance');
+                if (balanceElement) {
+                    balanceElement.textContent = balance.toFixed(2);
+                }
+                
+                // Update wallet balance in user wallet section
+                const walletBalanceElement = document.getElementById('walletBalance');
+                if (walletBalanceElement) {
+                    walletBalanceElement.textContent = balance.toFixed(2);
+                }
+                
+                // Show refresh animation
+                const refreshBtn = document.querySelector('button[onclick="refreshBalance()"]');
+                if (refreshBtn) {
+                    refreshBtn.textContent = '🔄 Refreshing...';
+                    setTimeout(() => {
+                        refreshBtn.textContent = '🔄 Refresh Balance';
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Failed to refresh balance:', error);
+            }
+        };
+
+        // Copy wallet address function
+        window.copyAddress = function() {
+            const addressInput = document.getElementById('walletAddress');
+            addressInput.select();
+            document.execCommand('copy');
+            
+            // Show copy feedback
+            const copyBtn = document.querySelector('button[onclick="copyAddress()"]');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 2000);
+        };
+
+        // Handle auth form submission
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword } = window.firebaseAuth;
+                
+                if (isLogin) {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                alert('Authentication failed: ' + error.message);
+            }
+        }
+
+        // Load user profile from Firestore
+        async function loadUserProfile(uid) {
+            try {
+                const { db, doc, getDoc } = window.firebaseAuth;
+                const userDoc = await getDoc(doc(db, 'users', uid));
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    
+                    // Check if user has mock wallet (starts with GPD or not 56 chars)
+                    if (!userData.stellarPublicKey || 
+                        !userData.stellarPublicKey.startsWith('G') || 
+                        userData.stellarPublicKey.length !== 56 ||
+                        userData.stellarPublicKey.startsWith('GPD')) {
+                        
+                        console.log('User has mock wallet, creating real wallet...');
+                        // Force create real wallet for existing users with mock data
+                        await createRealWalletForExistingUser(uid, userData.role || 'USER');
+                        return;
+                    }
+                    
+                    // Login to backend to get JWT token
+                    try {
+                        const loginResponse = await axios.post('http://localhost:3001/api/auth/login', {
+                            email: userData.email,
+                            password: 'firebase-user-' + uid
+                        });
+                        localStorage.setItem('token', loginResponse.data.token);
+                        console.log('Backend login successful, real wallet:', loginResponse.data.user.stellarPublicKey);
+                        
+                        // Use backend data for wallet info
+                        userData.stellarPublicKey = loginResponse.data.user.stellarPublicKey;
+                    } catch (loginError) {
+                        console.error('Backend login failed, creating new wallet:', loginError);
+                        await createRealWalletForExistingUser(uid, userData.role || 'USER');
+                        return;
+                    }
+                    
+                    showDashboard(userData);
+                } else {
+                    showRoleSelection(uid);
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+
+        // Create real wallet for existing users with mock data
+        async function createRealWalletForExistingUser(uid, role) {
+            try {
+                // Show loading message
+                const dashboardElement = document.getElementById('dashboard');
+                if (dashboardElement) {
+                    dashboardElement.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                            <h2 class="text-xl font-semibold text-gray-800 mb-2">Creating Real Stellar Wallet</h2>
+                            <p class="text-gray-600">Generating genuine Stellar address and funding with testnet XLM...</p>
+                            <p class="text-sm text-gray-500 mt-2">Please wait...</p>
+                        </div>
+                    `;
+                    dashboardElement.classList.remove('hidden');
+                }
+                
+                const authFormElement = document.getElementById('authForm');
+                if (authFormElement) {
+                    authFormElement.classList.add('hidden');
+                }
+                
+                // Use unique email to avoid conflicts
+                const uniqueEmail = `${firebaseUser.email.split('@')[0]}_${Date.now()}@${firebaseUser.email.split('@')[1]}`;
+                const password = 'firebase-user-' + uid;
+                
+                console.log('Creating wallet for unique email:', uniqueEmail);
+                
+                const response = await axios.post('http://localhost:3001/api/auth/signup', {
+                    email: uniqueEmail,
+                    password: password,
+                    role: role
+                });
+                
+                console.log('Real wallet created:', response.data);
+                
+                if (!response.data.user.stellarPublicKey || 
+                    !response.data.user.stellarPublicKey.startsWith('G') || 
+                    response.data.user.stellarPublicKey.length !== 56) {
+                    throw new Error('Failed to create real Stellar wallet');
+                }
+                
+                localStorage.setItem('token', response.data.token);
+                
+                const userData = {
+                    id: uid,
+                    email: firebaseUser.email, // Keep original email for display
+                    backendEmail: uniqueEmail, // Store backend email separately
+                    role: role,
+                    stellarPublicKey: response.data.user.stellarPublicKey,
+                    funded: response.data.user.funded,
+                    createdAt: new Date().toISOString()
+                };
+
+                const { db, doc, setDoc } = window.firebaseAuth;
+                await setDoc(doc(db, 'users', uid), userData);
+                
+                console.log('Real wallet saved to Firestore:', userData);
+                showDashboard(userData);
+            } catch (error) {
+                console.error('Error creating real wallet:', error);
+                
+                // Show error with retry option
+                const dashboardElement = document.getElementById('dashboard');
+                if (dashboardElement) {
+                    dashboardElement.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+                            <div class="text-red-500 text-4xl mb-4">⚠️</div>
+                            <h2 class="text-xl font-semibold text-gray-800 mb-2">Wallet Creation Failed</h2>
+                            <p class="text-gray-600 mb-4">Error: ${error.message}</p>
+                            <button onclick="retryRealWallet()" class="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600">🔄 Retry</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Retry real wallet creation
+        window.retryRealWallet = function() {
+            const uid = firebaseUser.uid;
+            const role = currentUser?.role || 'USER';
+            createRealWalletForExistingUser(uid, role);
+        };
+
+        // Show role selection for new users
+        function showRoleSelection(uid) {
+            const role = document.getElementById('role').value;
+            createUserProfile(uid, role);
+        }
+
+        // Create user profile in Firestore
+        async function createUserProfile(uid, role) {
+            try {
+                const { db, doc, setDoc } = window.firebaseAuth;
+                
+                // Show loading message
+                const authFormElement = document.getElementById('authForm');
+                if (authFormElement) {
+                    authFormElement.innerHTML = `
+                        <div class="text-center py-8">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                            <h2 class="text-xl font-semibold text-gray-800 mb-2">Creating Your Real Stellar Wallet</h2>
+                            <p class="text-gray-600">Generating real Stellar keypair and funding with testnet XLM...</p>
+                            <p class="text-sm text-gray-500 mt-2">This may take 10-15 seconds</p>
+                        </div>
+                    `;
+                }
+                
+                // Call backend to create REAL Stellar wallet
+                console.log('Creating real Stellar wallet for:', firebaseUser.email);
+                const password = 'firebase-user-' + uid; // Use UID for consistency
+                
+                try {
+                    const response = await axios.post('http://localhost:3001/api/auth/signup', {
+                        email: firebaseUser.email,
+                        password: password,
+                        role: role
+                    });
+                    
+                    console.log('Backend response:', response.data);
+                    
+                    if (!response.data.user.stellarPublicKey) {
+                        throw new Error('No Stellar wallet created');
+                    }
+                    
+                    // Validate Stellar address format
+                    const publicKey = response.data.user.stellarPublicKey;
+                    if (!publicKey.startsWith('G') || publicKey.length !== 56) {
+                        throw new Error(`Invalid Stellar address format: ${publicKey}`);
+                    }
+                    
+                    // Store JWT token for API calls
+                    localStorage.setItem('token', response.data.token);
+                    
+                    const userData = {
+                        id: uid,
+                        email: firebaseUser.email,
+                        role: role,
+                        stellarPublicKey: publicKey,
+                        funded: response.data.user.funded,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    await setDoc(doc(db, 'users', uid), userData);
+                    console.log('User profile saved to Firestore:', userData);
+                    
+                    // Directly show dashboard instead of calling showDashboard
+                    currentUser = userData;
+                    const authFormElement = document.getElementById('authForm');
+                    const dashboardElement = document.getElementById('dashboard');
+                    
+                    if (authFormElement) authFormElement.classList.add('hidden');
+                    if (dashboardElement) {
+                        dashboardElement.classList.remove('hidden');
+                        dashboardElement.innerHTML = `
+                            <div class="bg-white rounded-2xl shadow-xl p-6">
+                                <h1 class="text-2xl font-bold text-gray-800 mb-4">${userData.role === 'USER' ? '👤' : '🏪'} ${userData.role} Dashboard</h1>
+                                <p class="text-gray-600 mb-4">${userData.email}</p>
+                                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                                    <p class="text-sm text-gray-600 mb-1">Stellar Wallet</p>
+                                    <p class="font-mono text-xs text-gray-800 break-all mb-2">${userData.stellarPublicKey}</p>
+                                    <p class="text-lg font-semibold text-blue-600">💰 0.00 XLM</p>
+                                    <p class="text-sm text-green-600 mt-2">✅ Wallet Created Successfully!</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                } catch (axiosError) {
+                    console.error('Axios error:', axiosError);
+                    throw new Error('Backend signup failed: ' + (axiosError.response?.data?.error || axiosError.message));
+                }
+                
+            } catch (error) {
+                console.error('Error creating user profile:', error);
+                alert('Failed to create real Stellar wallet: ' + error.message);
+                showAuthForm();
+            }
+        }
+
+        // Show dashboard
+        function showDashboard(user) {
+            currentUser = user;
+            authForm.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            
+            const dashboardTitleElement = document.getElementById('dashboardTitle');
+            if (dashboardTitleElement) {
+                dashboardTitleElement.textContent = `${user.role === 'USER' ? '👤' : '🏪'} ${user.role} Dashboard`;
+            }
+            
+            const userEmailElement = document.getElementById('userEmail');
+            if (userEmailElement) {
+                userEmailElement.textContent = user.email;
+            }
+            
+            const stellarKeyElement = document.getElementById('stellarKey');
+            if (stellarKeyElement) {
+                stellarKeyElement.textContent = user.stellarPublicKey;
+            }
+            
+            // Set wallet address in user wallet section
+            const walletAddressElement = document.getElementById('walletAddress');
+            if (walletAddressElement) {
+                walletAddressElement.value = user.stellarPublicKey;
+            }
+            
+            // Fetch real balance from Stellar network
+            fetchRealBalance(user.stellarPublicKey);
+            
+            if (user.role === 'USER') {
+                if (paymentForm) paymentForm.classList.remove('hidden');
+                const userWalletElement = document.getElementById('userWallet');
+                if (userWalletElement) userWalletElement.classList.remove('hidden');
+                
+                const requestsTitleElement = document.getElementById('requestsTitle');
+                if (requestsTitleElement) requestsTitleElement.textContent = '📤 Sent Payments';
+            } else {
+                const merchantDepositElement = document.getElementById('merchantDeposit');
+                if (merchantDepositElement) merchantDepositElement.classList.remove('hidden');
+                
+                const requestsTitleElement = document.getElementById('requestsTitle');
+                if (requestsTitleElement) requestsTitleElement.textContent = '📥 Received Payments';
+                
+                loadMerchantDeposit();
+            }
+            
+            fetchPaymentRequests();
+        }
+
+        // Show auth form
+        function showAuthForm() {
+            authForm.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+        }
+
+        // Create payment
+        createPaymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const merchantEmail = document.getElementById('merchantEmail').value;
+            const upiId = document.getElementById('upiId').value;
+            const amount = document.getElementById('amount').value;
+
+            try {
+                // Mock payment creation
+                const paymentRequest = {
+                    id: Date.now().toString(),
+                    merchantEmail,
+                    upiId,
+                    amountInInr: parseFloat(amount),
+                    amountInXlm: (parseFloat(amount) / 10).toFixed(4),
+                    status: 'PENDING',
+                    createdAt: new Date().toISOString()
+                };
+                
+                document.getElementById('merchantEmail').value = '';
+                document.getElementById('upiId').value = '';
+                document.getElementById('amount').value = '';
+                
+                alert('💸 Payment request created successfully!');
+                fetchPaymentRequests();
+            } catch (error) {
+                alert('Failed to create payment request');
+            }
+        });
+
+        // Fetch payment requests (mock)
+        function fetchPaymentRequests() {
+            const container = document.getElementById('paymentRequests');
+            const noRequests = document.getElementById('noRequests');
+            
+            // Mock empty state for now
+            container.innerHTML = '';
+            noRequests.classList.remove('hidden');
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                const { auth, signOut } = window.firebaseAuth;
+                await signOut(auth);
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        // Load merchant deposit status
+        function loadMerchantDeposit() {
+            // Mock deposit status for now
+            const currentDeposit = Math.random() * 500;
+            const currentDepositElement = document.getElementById('currentDeposit');
+            if (currentDepositElement) {
+                currentDepositElement.textContent = currentDeposit.toFixed(2);
+            }
+            
+            const depositStatusElement = document.getElementById('depositStatus');
+            if (depositStatusElement) {
+                depositStatusElement.classList.remove('hidden');
+            }
+        }
+
+        // Handle deposit form
+        document.getElementById('depositForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amount = document.getElementById('depositAmount').value;
+            
+            if (parseFloat(amount) < 100) {
+                alert('Minimum deposit is 100 XLM');
+                return;
+            }
+            
+            try {
+                // Mock deposit transaction
+                alert(`💰 Deposited ${amount} XLM as collateral!\n\nYou can now receive payments up to ${amount} XLM.`);
+                
+                // Update deposit status
+                const currentDepositElement = document.getElementById('currentDeposit');
+                if (currentDepositElement) {
+                    const currentDeposit = parseFloat(currentDepositElement.textContent) + parseFloat(amount);
+                    currentDepositElement.textContent = currentDeposit.toFixed(2);
+                }
+                
+                const depositAmountElement = document.getElementById('depositAmount');
+                if (depositAmountElement) {
+                    depositAmountElement.value = '';
+                }
+            } catch (error) {
+                alert('Deposit failed: ' + error.message);
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+    </script>
+</body>
+</html>

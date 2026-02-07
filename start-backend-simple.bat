@@ -1,0 +1,9 @@
+@echo off
+echo Starting StellarPay Backend...
+cd /d "c:\Users\athar\OneDrive\Desktop\stellarbridge pay\backend"
+echo Current directory: %cd%
+echo Installing dependencies...
+call npm install
+echo Starting server...
+call npm run dev
+pause

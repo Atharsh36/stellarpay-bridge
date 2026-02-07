@@ -1,0 +1,12 @@
+{
+  "contractId": "C34505B450F1E867E272F7C70C9567CFF2E0D0B5DFA186243F8CCFA",
+  "deployerAddress": "GBGTJLQIAJP56NFTVWMTLYSPIGJI2L3CBRIJEZFMKI6MNV34CA7HIQHJ",
+  "network": "testnet",
+  "deployedAt": "2026-02-07T10:05:52.564Z",
+  "functions": [
+    "create_payment",
+    "confirm_payment",
+    "get_payment",
+    "cancel_payment"
+  ]
+}

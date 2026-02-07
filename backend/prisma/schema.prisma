@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                        String           @id @default(cuid())
+  email                     String           @unique
+  passwordHash              String
+  role                      Role
+  stellarPublicKey          String
+  stellarSecretKeyEncrypted String
+  createdAt                 DateTime         @default(now())
+  
+  sentPayments              PaymentRequest[] @relation("UserPayments")
+  receivedPayments          PaymentRequest[] @relation("MerchantPayments")
+}
+
+model PaymentRequest {
+  id            String        @id @default(cuid())
+  userId        String
+  merchantId    String
+  upiId         String
+  amountInInr   Float
+  amountInXlm   Float
+  status        PaymentStatus @default(PENDING)
+  stellarTxHash String?
+  createdAt     DateTime      @default(now())
+  
+  user          User          @relation("UserPayments", fields: [userId], references: [id])
+  merchant      User          @relation("MerchantPayments", fields: [merchantId], references: [id])
+}
+
+enum Role {
+  USER
+  MERCHANT
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  RELEASED
+}
