@@ -92,9 +92,14 @@ Flow:
 /screenshots
 1. ---<img width="1907" height="900" alt="Screenshot 2026-02-08 035136" src="https://github.com/user-attachments/assets/e67a51ba-d6c7-4ebf-a3fc-14567a5662a4" />
 
-2. <img width="1895" height="898" alt="Screenshot 2026-02-08 035309" src="https://github.com/user-attachments/assets/8600845c-d66e-4855-aaf0-9247091e401c" />
+2.
+<img width="1919" height="905" alt="Screenshot 2026-02-08 035602" src="https://github.com/user-attachments/assets/55be232f-4349-4267-b8da-5e335d330363" />
 
-3. <img width="1904" height="895" alt="Screenshot 2026-02-08 035407" src="https://github.com/user-attachments/assets/1ae73704-2b62-499f-9c98-e0cf4996b69f" />
+3.
+<img width="1895" height="898" alt="Screenshot 2026-02-08 035309" src="https://github.com/user-attachments/assets/8600845c-d66e-4855-aaf0-9247091e401c" />
+
+4.
+<img width="1904" height="895" alt="Screenshot 2026-02-08 035407" src="https://github.com/user-attachments/assets/1ae73704-2b62-499f-9c98-e0cf4996b69f" />
 
 
 ## 🌐 Deployed Link
