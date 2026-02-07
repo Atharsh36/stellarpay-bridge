@@ -174,22 +174,26 @@ export default function Dashboard() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          destination: withdrawAddress,
+          destinationAddress: withdrawAddress,
           amount: withdrawAmount
         })
       })
 
       const data = await res.json()
       if (data.success) {
-        alert('Withdrawal successful!')
+        alert('✅ Withdrawal successful!')
         setWithdrawAddress('')
         setWithdrawAmount('')
-        fetchBalance(user.publicKey)
+        // Refresh balance
+        const publicKey = user?.stellarPublicKey || user?.publicKey
+        if (publicKey) {
+          await fetchBalance(publicKey)
+        }
       } else {
-        alert(data.error || 'Withdrawal failed')
+        alert('❌ ' + (data.error || 'Withdrawal failed'))
       }
     } catch (error) {
-      alert('Error processing withdrawal')
+      alert('❌ Error processing withdrawal')
     } finally {
       setLoading(false)
     }
@@ -394,43 +398,11 @@ export default function Dashboard() {
   if (user.role === 'USER') {
     return (
       <div className="min-h-screen bg-black relative overflow-hidden">
-        {/* Animated Stars */}
-        <div className="absolute inset-0">
-          {Array.from({ length: 100 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-orange-400 rounded-full animate-pulse"
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`
-              }}
-            />
-          ))}
-        </div>
 
         {/* Header */}
         <header className="relative z-10 flex justify-between items-center p-6">
           <div className="flex items-center space-x-3">
-            <div className="relative w-16 h-16 bg-gradient-to-br from-yellow-400 via-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-2xl border-2 border-yellow-400/50 animate-pulse">
-              <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full animate-spin" style={{animationDuration: '8s'}}></div>
-              <svg className="w-10 h-10 text-white relative z-10 drop-shadow-lg animate-bounce" fill="currentColor" viewBox="0 0 24 24" style={{animationDuration: '3s'}}>
-                {/* Rocket body */}
-                <path d="M12 2C12 2 16 6 16 12C16 14 14 16 12 16C10 16 8 14 8 12C8 6 12 2 12 2Z" fill="currentColor"/>
-                {/* Rocket tip */}
-                <path d="M12 2L10 6H14L12 2Z" fill="currentColor" opacity="0.8"/>
-                {/* Windows */}
-                <circle cx="12" cy="8" r="1.5" fill="#1e293b" opacity="0.7"/>
-                <circle cx="12" cy="11" r="1" fill="#1e293b" opacity="0.7"/>
-                {/* Fins */}
-                <path d="M8 12L6 16L8 14Z" fill="currentColor" opacity="0.9"/>
-                <path d="M16 12L18 16L16 14Z" fill="currentColor" opacity="0.9"/>
-                {/* Animated Flames */}
-                <path d="M10 16L9 20L12 18L15 20L14 16" fill="#f97316" opacity="0.8" className="animate-pulse"/>
-                <path d="M11 16L10.5 19L12 17.5L13.5 19L13 16" fill="#fbbf24" opacity="0.9" className="animate-pulse" style={{animationDelay: '0.5s'}}/>
-              </svg>
-            </div>
-            <span className="text-white text-xl font-semibold">StellarBridge Pay</span>
+            <span className="text-white text-3xl font-bold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.02em' }}>StellarBridge Pay</span>
           </div>
           <nav className="flex space-x-6 text-gray-300">
             <button onClick={() => setActiveTab('wallet')} className={activeTab === 'wallet' ? 'text-white' : ''}>Wallet</button>
@@ -489,9 +461,8 @@ export default function Dashboard() {
                 <button
                   onClick={handleFundAccount}
                   disabled={loading}
-                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-medium flex items-center space-x-2 disabled:opacity-50"
+                  className="bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium flex items-center space-x-2 disabled:opacity-50 border border-orange-700/50"
                 >
-                  <span>🔥</span>
                   <span>{loading ? 'Funding...' : 'Fund Account'}</span>
                 </button>
               </div>
@@ -558,12 +529,63 @@ export default function Dashboard() {
           </div>
 
           {/* Tab Content */}
+          {activeTab === 'wallet' && (
+            <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
+              <h2 className="text-2xl font-bold text-white mb-6">Wallet Overview</h2>
+              <div className="space-y-6">
+                <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                  <p className="text-sm text-orange-300 mb-2">Stellar Public Key</p>
+                  <div className="flex items-center space-x-3">
+                    <p className="flex-1 text-white font-mono text-sm break-all bg-orange-950/50 rounded-lg p-3">
+                      {user?.stellarPublicKey || user?.publicKey}
+                    </p>
+                    <button
+                      onClick={() => copyToClipboard(user?.stellarPublicKey || user?.publicKey)}
+                      className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                  <p className="text-sm text-orange-300 mb-2">Current Balance</p>
+                  <p className="text-4xl font-bold text-white mb-2">{balance} XLM</p>
+                  <p className="text-green-400 text-sm">≈ ₹{(parseFloat(balance) * 10).toFixed(2)} INR</p>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                    <p className="text-sm text-orange-300 mb-2">Account Type</p>
+                    <p className="text-lg font-semibold text-white">USER</p>
+                  </div>
+                  <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                    <p className="text-sm text-orange-300 mb-2">Network</p>
+                    <p className="text-lg font-semibold text-white">Stellar Testnet</p>
+                  </div>
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => fetchBalance(user?.stellarPublicKey || user?.publicKey)}
+                    className="flex-1 bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium border border-orange-700/50"
+                  >
+                    🔄 Refresh Balance
+                  </button>
+                  <button
+                    onClick={handleFundAccount}
+                    disabled={loading}
+                    className="flex-1 bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 border border-orange-700/50"
+                  >
+                    {loading ? 'Funding...' : 'Fund Wallet (Testnet)'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'scanner' && (
             <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
               <h2 className="text-2xl font-bold text-white mb-6">UPI QR Code Scanner</h2>
               
               <div className="text-center space-y-6">
-                <div className="text-6xl mb-4">📱</div>
                 <p className="text-orange-300 text-lg mb-8">
                   Scan UPI QR codes to make instant payments with XLM
                 </p>
@@ -572,19 +594,21 @@ export default function Dashboard() {
                   onClick={() => router.push('/qr-scanner')}
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-12 py-6 rounded-2xl font-bold text-xl shadow-2xl transform hover:scale-105 transition-all duration-300"
                 >
-                  🚀 Open QR Scanner
+                  Open QR Scanner
                 </button>
                 
-                <div className="grid md:grid-cols-2 gap-6 mt-8">
+                <div className="grid md:grid-cols-3 gap-6 mt-8">
                   <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
-                    <div className="text-3xl mb-3">📷</div>
-                    <h3 className="text-white font-semibold mb-2">Camera Scan</h3>
-                    <p className="text-orange-300 text-sm">Use your device camera to scan QR codes in real-time</p>
+                    <h3 className="text-white font-semibold mb-2">Scan or upload UPI QR code</h3>
+                    <p className="text-orange-300 text-sm">Use camera or upload image</p>
                   </div>
                   <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
-                    <div className="text-3xl mb-3">📁</div>
-                    <h3 className="text-white font-semibold mb-2">Upload Image</h3>
-                    <p className="text-orange-300 text-sm">Select a QR code image from your device gallery</p>
+                    <h3 className="text-white font-semibold mb-2">Enter payment amount</h3>
+                    <p className="text-orange-300 text-sm">Specify the amount to pay</p>
+                  </div>
+                  <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                    <h3 className="text-white font-semibold mb-2">Complete with XLM</h3>
+                    <p className="text-orange-300 text-sm">Payment processed instantly</p>
                   </div>
                 </div>
               </div>
@@ -688,9 +712,6 @@ export default function Dashboard() {
                   <div key={tx.id} className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50 hover:bg-orange-900/40 transition-colors">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
-                        <span className="text-3xl">
-                          {tx.type === 'PAYMENT' ? '💸' : tx.type === 'DEPOSIT' ? '📥' : '📤'}
-                        </span>
                         <div>
                           <p className="text-white font-semibold text-lg">{tx.merchant}</p>
                           <p className="text-orange-300 text-sm">{tx.date}</p>
@@ -705,7 +726,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between pt-3 border-t border-orange-700/30">
                       <span className="inline-block bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-xs font-medium border border-green-700">
-                        ✅ {tx.status}
+                        {tx.status}
                       </span>
                       <button
                         onClick={() => window.open(`https://stellar.expert/explorer/testnet/tx/${tx.txHash}`, '_blank')}
@@ -734,15 +755,62 @@ export default function Dashboard() {
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="text-orange-300 text-sm mb-2 block">Amount (INR)</label>
-                      <input type="number" placeholder="1000" className="w-full bg-orange-900/30 border border-orange-700/50 rounded-xl px-4 py-3 text-white" />
+                      <input 
+                        type="number" 
+                        placeholder="1000" 
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        className="w-full bg-orange-900/30 border border-orange-700/50 rounded-xl px-4 py-3 text-white" 
+                      />
                     </div>
                     <div>
                       <label className="text-orange-300 text-sm mb-2 block">You'll receive (XLM)</label>
-                      <input type="text" value="100.00 XLM" readOnly className="w-full bg-orange-950/50 border border-orange-700/50 rounded-xl px-4 py-3 text-green-400" />
+                      <input 
+                        type="text" 
+                        value={withdrawAmount ? `${(parseFloat(withdrawAmount) / 10).toFixed(2)} XLM` : '0.00 XLM'} 
+                        readOnly 
+                        className="w-full bg-orange-950/50 border border-orange-700/50 rounded-xl px-4 py-3 text-green-400" 
+                      />
                     </div>
                   </div>
-                  <button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-xl font-medium">
-                    🌟 Buy XLM
+                  <button 
+                    onClick={async () => {
+                      if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+                        alert('Please enter a valid amount')
+                        return
+                      }
+                      
+                      setLoading(true)
+                      try {
+                        const token = localStorage.getItem('token')
+                        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/create-buy`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                          },
+                          body: JSON.stringify({
+                            xlmAmount: parseFloat(withdrawAmount) / 10,
+                            inrAmount: parseFloat(withdrawAmount)
+                          })
+                        })
+                        
+                        const data = await res.json()
+                        if (data.id) {
+                          router.push(`/buy-status?id=${data.id}`)
+                        } else {
+                          alert('❌ Failed to create buy request: ' + (data.error || 'Unknown error'))
+                        }
+                      } catch (error) {
+                        alert('❌ Error: ' + error.message)
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    disabled={loading}
+                    className="w-full bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium border border-orange-700/50 disabled:opacity-50"
+                  >
+                    {loading ? 'Creating Request...' : 'Proceed to Payment'}
                   </button>
                 </div>
                 <div className="bg-blue-900/30 border border-blue-700/50 rounded-xl p-4">
@@ -859,9 +927,9 @@ export default function Dashboard() {
                         }
                       }}
                       disabled={loading}
-                      className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50"
+                      className="w-full bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 border border-orange-700/50"
                     >
-                      {loading ? 'Creating Request...' : '💫 Create Sell Request'}
+                      {loading ? 'Creating Request...' : 'Create Sell Request'}
                     </button>
                   </div>
                 </div>
@@ -880,31 +948,13 @@ export default function Dashboard() {
   // MERCHANT DASHBOARD
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Animated Stars */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 100 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-orange-400 rounded-full animate-pulse"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
 
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center p-6">
         <div className="flex items-center space-x-3">
-          <div className="relative w-16 h-16 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 rounded-full flex items-center justify-center shadow-2xl border-2 border-yellow-400/50 animate-pulse">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full"></div>
-            <span className="text-5xl relative z-10 drop-shadow-lg">🚀</span>
-          </div>
           <div>
-            <span className="text-white text-xl font-semibold">StellarBridge Pay</span>
-            <p className="text-orange-400 text-xs">Merchant Portal</p>
+            <span className="text-white text-3xl font-bold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.02em' }}>StellarBridge Pay</span>
+            <p className="text-orange-400 text-sm font-semibold tracking-wide" style={{ letterSpacing: '0.05em' }}>Merchant Portal</p>
           </div>
         </div>
         <button onClick={handleLogout} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 rounded-full font-medium">
@@ -915,7 +965,7 @@ export default function Dashboard() {
       {/* Navigation Tabs */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 mb-8">
         <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-2 border border-orange-800/50 flex flex-wrap gap-2">
-          {['dashboard', 'requests', 'wallet', 'bridge', 'transactions', 'earnings', 'notifications', 'profile', 'security'].map(tab => (
+          {['dashboard', 'requests', 'wallet', 'transactions', 'earnings', 'notifications', 'profile', 'security'].map(tab => (
             <button
               key={tab}
               onClick={() => setMerchantTab(tab)}
@@ -967,20 +1017,24 @@ export default function Dashboard() {
             </div>
             <div className="space-y-3">
               {mockNotifications.slice(0, 3).map((notif) => (
-                <div key={notif.id} className={`bg-orange-900/30 rounded-xl p-4 border border-orange-700/50 flex items-start space-x-3 ${!notif.read ? 'border-orange-500/50' : ''}`}>
-                  <div className="text-orange-400 text-sm font-medium min-w-fit">
-                    {notif.type === 'payment' ? 'PAYMENT' : 
-                     notif.type === 'success' ? 'SUCCESS' : 
-                     notif.type === 'info' ? 'INFO' : 
-                     notif.type === 'warning' ? 'WARNING' : 'NOTIFICATION'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-white font-semibold">{notif.title}</p>
-                      {!notif.read && <span className="w-2 h-2 bg-orange-500 rounded-full"></span>}
+                <div key={notif.id} className={`bg-gradient-to-r from-orange-900/60 to-orange-950/60 rounded-2xl p-6 border-l-4 ${!notif.read ? 'border-orange-500' : 'border-orange-700/50'} shadow-lg`}>
+                  <div className="flex items-start space-x-4">
+                    <div className="bg-orange-500/20 px-3 py-1 rounded-lg">
+                      <span className="text-orange-400 text-xs font-bold uppercase">
+                        {notif.type === 'payment' ? 'PAYMENT' : 
+                         notif.type === 'success' ? 'SUCCESS' : 
+                         notif.type === 'info' ? 'INFO' : 
+                         notif.type === 'warning' ? 'WARNING' : 'NOTIFICATION'}
+                      </span>
                     </div>
-                    <p className="text-orange-300 text-sm">{notif.message}</p>
-                    <p className="text-orange-400 text-xs mt-1">{notif.time}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-white font-bold text-lg">{notif.title}</p>
+                        {!notif.read && <span className="w-2 h-2 bg-orange-500 rounded-full"></span>}
+                      </div>
+                      <p className="text-orange-200 text-base mb-2">{notif.message}</p>
+                      <p className="text-orange-400 text-sm">{notif.time}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -989,12 +1043,9 @@ export default function Dashboard() {
 
           <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
             <h2 className="text-2xl font-bold text-white mb-4">Quick Actions</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <button onClick={() => setMerchantTab('requests')} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-4 rounded-xl font-medium hover:from-orange-600 hover:to-orange-700">
-                📋 View Payment Requests
-              </button>
-              <button onClick={() => setMerchantTab('bridge')} className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 rounded-xl font-medium hover:from-green-600 hover:to-green-700">
-                🌉 Bridge Funds
+            <div className="grid md:grid-cols-1 gap-4">
+              <button onClick={() => setMerchantTab('requests')} className="bg-orange-900/50 hover:bg-orange-900/70 text-white px-8 py-6 rounded-2xl font-bold text-lg border border-orange-700/50 shadow-lg flex items-center justify-center space-x-3">
+                <span>View Payment Requests</span>
               </button>
             </div>
           </div>
@@ -1023,15 +1074,26 @@ export default function Dashboard() {
             <div className="space-y-4">
               {paymentRequests.map((request, idx) => (
                 <div key={idx} className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
+                  <div className="mb-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      request.type === 'BUY' ? 'bg-green-900/50 text-green-300 border border-green-700' :
+                      request.type === 'SELL' ? 'bg-purple-900/50 text-purple-300 border border-purple-700' :
+                      'bg-blue-900/50 text-blue-300 border border-blue-700'
+                    }`}>
+                      {request.type || 'PAYMENT'}
+                    </span>
+                  </div>
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <p className="text-sm text-orange-300">User Email</p>
                       <p className="font-semibold text-white">{request.userEmail || 'user@test.com'}</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-orange-300">UPI ID</p>
-                      <p className="font-semibold text-white">{request.upiId || request.merchantUpiId}</p>
-                    </div>
+                    {request.type !== 'BUY' && (
+                      <div>
+                        <p className="text-sm text-orange-300">UPI ID</p>
+                        <p className="font-semibold text-white">{request.upiId || request.merchantUpiId}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm text-orange-300">INR Amount</p>
                       <p className="font-semibold text-white">₹{request.inrAmount || request.amountInInr}</p>
@@ -1056,6 +1118,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className={`px-4 py-2 rounded-full text-sm font-medium ${
                       request.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-700' :
+                      request.status === 'PAID' ? 'bg-blue-900/50 text-blue-300 border border-blue-700' :
                       request.status === 'APPROVED' ? 'bg-blue-900/50 text-blue-300 border border-blue-700' :
                       request.status === 'COMPLETED' ? 'bg-green-900/50 text-green-300 border border-green-700' :
                       request.status === 'REJECTED' ? 'bg-red-900/50 text-red-300 border border-red-700' :
@@ -1064,7 +1127,37 @@ export default function Dashboard() {
                       {request.status}
                     </span>
                     <div className="flex space-x-2">
-                      {request.status === 'PENDING' && (
+                      {request.type === 'BUY' && request.status === 'PAID' && (
+                        <button 
+                          onClick={async () => {
+                            if (!confirm('Have you received the UPI payment? This will transfer XLM to user.')) return
+                            setLoading(true)
+                            try {
+                              const token = localStorage.getItem('token')
+                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/payments/confirm-buy/${request.id}`, {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${token}` }
+                              })
+                              const data = await res.json()
+                              if (data.status === 'COMPLETED') {
+                                alert('✅ XLM transferred to user!')
+                                fetchPaymentRequests()
+                              } else {
+                                alert('❌ Failed: ' + (data.error || 'Unknown error'))
+                              }
+                            } catch (error) {
+                              alert('❌ Error confirming buy')
+                            } finally {
+                              setLoading(false)
+                            }
+                          }}
+                          disabled={loading}
+                          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                        >
+                          💸 Confirm & Transfer XLM
+                        </button>
+                      )}
+                      {request.status === 'PENDING' && request.type !== 'BUY' && (
                         <>
                           <button onClick={() => handleAcceptRequest(request.id)} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
                             ✅ Accept
@@ -1118,11 +1211,11 @@ export default function Dashboard() {
               <p className="text-green-400 mt-1">≈ ₹{(parseFloat(balance) * 100).toFixed(2)} INR</p>
             </div>
             <div className="flex space-x-4">
-              <button onClick={() => fetchBalance(user.stellarPublicKey || user.publicKey)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium">
+              <button onClick={() => fetchBalance(user.stellarPublicKey || user.publicKey)} className="flex-1 bg-blue-900/50 hover:bg-blue-900/70 text-white px-6 py-3 rounded-xl font-medium border border-blue-700/50">
                 🔄 Refresh Balance
               </button>
-              <button onClick={handleFundAccount} disabled={loading} className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50">
-                💰 {loading ? 'Funding...' : 'Fund Wallet (Testnet)'}
+              <button onClick={handleFundAccount} disabled={loading} className="flex-1 bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 border border-orange-700/50">
+                {loading ? 'Funding...' : 'Fund Wallet (Testnet)'}
               </button>
             </div>
             <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4">
@@ -1132,32 +1225,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 4. BRIDGE FUNDS */}
-      {merchantTab === 'bridge' && (
-        <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
-          <h2 className="text-2xl font-bold text-white mb-6">Bridge Funds (UPI → XLM)</h2>
-          <div className="space-y-6">
-            <div className="bg-orange-900/30 rounded-xl p-6 border border-orange-700/50">
-              <h3 className="text-lg font-bold text-white mb-4">How it works:</h3>
-              <ol className="space-y-2 text-orange-200">
-                <li>1️⃣ Accept a payment request</li>
-                <li>2️⃣ Pay the user via UPI manually</li>
-                <li>3️⃣ Click "Confirm UPI Payment" button</li>
-                <li>4️⃣ Smart contract releases XLM to your wallet</li>
-              </ol>
-            </div>
-            <div className="bg-green-900/30 border border-green-700/50 rounded-xl p-6">
-              <p className="text-green-300 font-medium">✅ Bridge Status: Ready</p>
-              <p className="text-sm text-green-400 mt-2">Soroban smart contract is active and ready to release funds.</p>
-            </div>
-            <button onClick={() => setMerchantTab('requests')} className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-4 rounded-xl font-medium">
-              View Pending Requests →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 5. TRANSACTIONS */}
+      {/* 4. TRANSACTIONS */}
       {merchantTab === 'transactions' && (
         <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
           <h2 className="text-2xl font-bold text-white mb-6">Transaction History</h2>
@@ -1177,7 +1245,6 @@ export default function Dashboard() {
               {transactions.map((tx) => (
                 <div key={tx.id} className="bg-orange-900/30 rounded-xl p-5 border border-orange-700/50 flex items-center justify-between hover:bg-orange-900/40 transition-colors">
                   <div className="flex items-center space-x-4">
-                    <span className="text-3xl">💰</span>
                     <div>
                       <p className="text-white font-semibold">{tx.customer}</p>
                       <p className="text-orange-300 text-sm">{new Date(tx.date).toLocaleString()}</p>
@@ -1234,7 +1301,6 @@ export default function Dashboard() {
                 transactions.map((earning) => (
                   <div key={earning.id} className="bg-orange-900/30 rounded-xl p-5 border border-orange-700/50 flex items-center justify-between hover:bg-orange-900/40 transition-colors">
                     <div className="flex items-center space-x-4">
-                      <span className="text-3xl">💰</span>
                       <div>
                         <p className="text-white font-semibold">{earning.customer}</p>
                         <p className="text-orange-300 text-sm">{new Date(earning.date).toLocaleString()}</p>
@@ -1297,13 +1363,51 @@ export default function Dashboard() {
               <p className="text-lg font-semibold text-white">merchant@okicici</p>
             </div>
             <div>
+              <label className="text-sm text-orange-300">ID Verification Status</label>
+              <div className="flex items-center space-x-3 mt-2">
+                {user.isVerified ? (
+                  <span className="inline-block bg-green-900/50 text-green-300 px-4 py-2 rounded-full font-medium border border-green-700">✅ Verified</span>
+                ) : (
+                  <span className="inline-block bg-yellow-900/50 text-yellow-300 px-4 py-2 rounded-full font-medium border border-yellow-700">⚠️ Not Verified</span>
+                )}
+              </div>
+            </div>
+            <div>
               <label className="text-sm text-orange-300">Account Status</label>
-              <span className="inline-block bg-green-900/50 text-green-300 px-4 py-2 rounded-full font-medium border border-green-700">✅ Active</span>
+              <div className="flex items-center space-x-3 mt-2">
+                {user.isBanned ? (
+                  <span className="inline-block bg-red-900/50 text-red-300 px-4 py-2 rounded-full font-medium border border-red-700">🚫 Banned</span>
+                ) : (
+                  <span className="inline-block bg-green-900/50 text-green-300 px-4 py-2 rounded-full font-medium border border-green-700">✅ Active</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-orange-300">Suspicious Activity Count</label>
+              <div className="flex items-center space-x-3 mt-2">
+                <p className="text-lg font-semibold text-white">{user.suspiciousActivityCount || 0}</p>
+                {user.suspiciousActivityCount >= 3 && (
+                  <span className="inline-block bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-xs font-medium border border-red-700">⚠️ High Risk</span>
+                )}
+              </div>
             </div>
             <div>
               <label className="text-sm text-orange-300">Role</label>
               <p className="text-lg font-semibold text-orange-400">MERCHANT</p>
             </div>
+            {user.isBanned && (
+              <div className="bg-red-900/30 border border-red-700/50 rounded-xl p-4">
+                <p className="text-red-300 text-sm font-medium">⚠️ Your account has been banned due to suspicious activity. Contact support for assistance.</p>
+              </div>
+            )}
+            {!user.isVerified && (
+              <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4">
+                <p className="text-yellow-300 text-sm font-medium">⚠️ Please complete ID verification to unlock full merchant features.</p>
+                <button className="mt-3 bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-2 rounded-xl font-medium border border-orange-700/50">
+                  Start Verification
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1313,17 +1417,17 @@ export default function Dashboard() {
         <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-8 border border-orange-800/50">
           <h2 className="text-2xl font-bold text-white mb-6">Security & Settings</h2>
           <div className="space-y-4">
-            <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium text-left">
-              🔑 Change Password
+            <button className="w-full bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium text-left border border-orange-700/50">
+              Change Password
             </button>
-            <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium text-left">
-              🚪 Logout All Sessions
+            <button onClick={handleLogout} className="w-full bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium text-left border border-orange-700/50">
+              Logout All Sessions
             </button>
-            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-medium text-left">
-              📋 View Login Activity
+            <button className="w-full bg-orange-900/50 hover:bg-orange-900/70 text-white px-6 py-3 rounded-xl font-medium text-left border border-orange-700/50">
+              View Login Activity
             </button>
             <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4">
-              <p className="text-sm text-yellow-300">🔐 2FA (Two-Factor Authentication) - Coming Soon</p>
+              <p className="text-sm text-yellow-300">2FA (Two-Factor Authentication) - Coming Soon</p>
             </div>
           </div>
         </div>

@@ -153,20 +153,6 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
-      {/* Animated Stars */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 100 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-orange-400 rounded-full animate-pulse"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
 
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center p-6">
@@ -193,7 +179,6 @@ export default function PaymentPage() {
           {/* UPI Details */}
           <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-6 border border-orange-800/50">
             <div className="flex items-center space-x-2 mb-4">
-              <span className="text-2xl">💳</span>
               <h2 className="text-xl font-bold text-white">UPI Details</h2>
             </div>
             <div className="space-y-3">
@@ -211,7 +196,6 @@ export default function PaymentPage() {
           {/* Your Details */}
           <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-6 border border-orange-800/50">
             <div className="flex items-center space-x-2 mb-4">
-              <span className="text-2xl">👤</span>
               <h2 className="text-xl font-bold text-white">Your Details</h2>
             </div>
             <div className="space-y-4">
@@ -299,7 +283,6 @@ export default function PaymentPage() {
           {/* Enter Amount */}
           <div className="bg-gradient-to-br from-orange-900/40 to-orange-950/40 backdrop-blur-lg rounded-3xl p-6 border border-orange-800/50">
             <div className="flex items-center space-x-2 mb-4">
-              <span className="text-2xl">💰</span>
               <h2 className="text-xl font-bold text-white">Enter Amount</h2>
             </div>
             
@@ -364,9 +347,9 @@ export default function PaymentPage() {
           >
             {loading ? 'Processing...' : 
              balanceLoading ? 'Checking Balance...' :
-             !amount ? '💸 Enter Amount' :
-             parseFloat(xlmEquivalent || '0') > parseFloat(userBalance || '0') ? '❌ Insufficient Balance' :
-             '💸 Proceed to Pay'}
+             !amount ? 'Enter Amount' :
+             parseFloat(xlmEquivalent || '0') > parseFloat(userBalance || '0') ? 'Insufficient Balance' :
+             'Proceed to Pay'}
           </button>
           
           {amount && parseFloat(xlmEquivalent || '0') > parseFloat(userBalance || '0') && !balanceLoading && (

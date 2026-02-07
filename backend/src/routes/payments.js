@@ -152,6 +152,64 @@ router.post('/confirm/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User or merchant not found' });
     }
 
+    // SUSPICIOUS ACTIVITY DETECTION
+    const detectSuspiciousActivity = () => {
+      const reasons = [];
+      
+      // 1. Multiple rapid confirmations (more than 5 in 1 minute)
+      const oneMinuteAgo = new Date(Date.now() - 60000);
+      const recentConfirmations = paymentRequests.filter(r => 
+        r.merchantEmail === merchant.email && 
+        r.status === 'COMPLETED' && 
+        new Date(r.completedAt) > oneMinuteAgo
+      ).length;
+      if (recentConfirmations >= 5) reasons.push('Multiple rapid confirmations');
+      
+      // 2. Large amount transaction (over 1000 XLM)
+      const xlmAmount = paymentRequest.xlmAmount || paymentRequest.amountInXlm;
+      if (xlmAmount > 1000) reasons.push('Large transaction amount');
+      
+      // 3. Confirming without approval
+      if (paymentRequest.status !== 'APPROVED') reasons.push('Confirming without approval');
+      
+      // 4. Same merchant multiple failed transactions
+      const failedCount = paymentRequests.filter(r => 
+        r.merchantEmail === merchant.email && 
+        r.status === 'TRANSFER_FAILED'
+      ).length;
+      if (failedCount >= 3) reasons.push('Multiple failed transactions');
+      
+      return reasons;
+    };
+
+    const suspiciousReasons = detectSuspiciousActivity();
+    
+    if (suspiciousReasons.length > 0) {
+      console.log('⚠️ SUSPICIOUS ACTIVITY DETECTED:', suspiciousReasons);
+      merchant.suspiciousActivityCount = (merchant.suspiciousActivityCount || 0) + 1;
+      
+      // Auto-ban if suspicious activity count >= 3
+      if (merchant.suspiciousActivityCount >= 3) {
+        merchant.isBanned = true;
+        console.log('🚫 MERCHANT PERMANENTLY BANNED:', merchant.email);
+        return res.status(403).json({ 
+          error: 'Account permanently banned due to suspicious activity',
+          reasons: suspiciousReasons,
+          isBanned: true
+        });
+      }
+      
+      console.log(`Suspicious activity count: ${merchant.suspiciousActivityCount}`);
+    }
+
+    // Check if merchant is banned
+    if (merchant.isBanned) {
+      return res.status(403).json({ 
+        error: 'Account is permanently banned',
+        isBanned: true
+      });
+    }
+
     // Handle both regular payments and sell requests
     const xlmAmount = paymentRequest.xlmAmount || paymentRequest.amountInXlm;
     const transferType = paymentRequest.type === 'SELL' ? 'SELL' : 'PAYMENT';
@@ -450,6 +508,139 @@ router.post('/create-sell', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Create sell request error:', error);
     res.status(500).json({ error: 'Failed to create sell request: ' + error.message });
+  }
+});
+
+// Create buy request (user wants to buy XLM with INR)
+router.post('/create-buy', authenticateToken, async (req, res) => {
+  try {
+    const { xlmAmount, inrAmount } = req.body;
+    
+    if (!xlmAmount || !inrAmount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const buyRequest = {
+      id: Date.now().toString(),
+      userId: req.user.id,
+      userEmail: req.user.email,
+      type: 'BUY',
+      xlmAmount: parseFloat(xlmAmount),
+      inrAmount: parseFloat(inrAmount),
+      status: 'PENDING',
+      merchantUpiId: 'merchant@paytm',
+      merchantEmail: 'merchant@test.com',
+      createdAt: new Date()
+    };
+
+    paymentRequests.push(buyRequest);
+    console.log('Buy request created:', buyRequest);
+    res.json(buyRequest);
+  } catch (error) {
+    console.error('Create buy request error:', error);
+    res.status(500).json({ error: 'Failed to create buy request: ' + error.message });
+  }
+});
+
+// User marks buy payment as paid
+router.post('/buy-paid/:id', authenticateToken, async (req, res) => {
+  try {
+    const buyRequest = paymentRequests.find(r => r.id === req.params.id && r.userId === req.user.id);
+    if (!buyRequest) {
+      return res.status(404).json({ error: 'Buy request not found' });
+    }
+    
+    buyRequest.status = 'PAID';
+    buyRequest.paidAt = new Date();
+    console.log('User marked buy request as paid:', buyRequest.id);
+    res.json(buyRequest);
+  } catch (error) {
+    console.error('Mark buy paid error:', error);
+    res.status(500).json({ error: 'Failed to mark as paid' });
+  }
+});
+
+// Merchant confirms buy payment and transfers XLM to user
+router.post('/confirm-buy/:id', authenticateToken, async (req, res) => {
+  try {
+    const buyRequest = paymentRequests.find(r => r.id === req.params.id && r.type === 'BUY');
+    if (!buyRequest) {
+      return res.status(404).json({ error: 'Buy request not found' });
+    }
+
+    const users = authRoutes.getUsers();
+    const user = users.find(u => u.id === buyRequest.userId);
+    const merchant = users.find(u => u.email === buyRequest.merchantEmail && u.role === 'MERCHANT');
+
+    if (!user || !merchant) {
+      return res.status(404).json({ error: 'User or merchant not found' });
+    }
+
+    console.log('\n💰 BUY XLM TRANSFER INITIATED');
+    console.log(`Request ID: ${buyRequest.id}`);
+    console.log(`Amount: ${buyRequest.xlmAmount} XLM`);
+    console.log(`From MERCHANT: ${merchant.stellarPublicKey}`);
+    console.log(`To USER: ${user.stellarPublicKey}`);
+    
+    try {
+      const merchantSecretKey = decrypt(merchant.stellarSecretKeyEncrypted);
+      const merchantKeypair = StellarSdk.Keypair.fromSecret(merchantSecretKey);
+      
+      const merchantAccount = await server.loadAccount(merchant.stellarPublicKey);
+      const merchantBalance = merchantAccount.balances.find(b => b.asset_type === 'native');
+      const balance = parseFloat(merchantBalance.balance);
+      
+      if (balance < buyRequest.xlmAmount) {
+        throw new Error(`Merchant has insufficient balance: ${balance} XLM < ${buyRequest.xlmAmount} XLM`);
+      }
+      
+      const transaction = new StellarSdk.TransactionBuilder(merchantAccount, {
+        fee: '100000',
+        networkPassphrase: StellarSdk.Networks.TESTNET
+      })
+      .addOperation(StellarSdk.Operation.payment({
+        destination: user.stellarPublicKey,
+        asset: StellarSdk.Asset.native(),
+        amount: buyRequest.xlmAmount.toString()
+      }))
+      .addMemo(StellarSdk.Memo.text(`BUY${buyRequest.id}`))
+      .setTimeout(180)
+      .build();
+      
+      transaction.sign(merchantKeypair);
+      const result = await server.submitTransaction(transaction);
+      
+      console.log('✅ BUY XLM TRANSFER SUCCESSFUL!');
+      console.log(`Transaction Hash: ${result.hash}`);
+      
+      buyRequest.status = 'COMPLETED';
+      buyRequest.transactionHash = result.hash;
+      buyRequest.completedAt = new Date();
+      
+    } catch (transferError) {
+      console.error('❌ Transfer failed:', transferError);
+      buyRequest.status = 'TRANSFER_FAILED';
+      buyRequest.error = transferError.message;
+    }
+
+    res.json(buyRequest);
+  } catch (error) {
+    console.error('Confirm buy error:', error);
+    res.status(500).json({ error: 'Failed to confirm buy' });
+  }
+});
+
+// Get buy request by ID
+router.get('/buy-request/:id', authenticateToken, async (req, res) => {
+  try {
+    const buyRequest = paymentRequests.find(r => r.id === req.params.id && r.userId === req.user.id);
+    if (!buyRequest) {
+      return res.status(404).json({ error: 'Buy request not found' });
+    }
+    res.json(buyRequest);
+  } catch (error) {
+    console.error('Get buy request error:', error);
+    res.status(500).json({ error: 'Failed to fetch buy request' });
   }
 });
 

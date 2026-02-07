@@ -33,6 +33,9 @@ const createDefaultUsers = async () => {
         stellarSecretKeyEncrypted: encrypt(wallet.secretKey),
         funded: wallet.funded,
         initialBalance: wallet.initialBalance,
+        isVerified: false,
+        isBanned: false,
+        suspiciousActivityCount: 0,
         createdAt: new Date()
       });
     }
@@ -72,6 +75,9 @@ router.post('/signup', async (req, res) => {
       stellarSecretKeyEncrypted,
       funded: wallet.funded,
       initialBalance: wallet.initialBalance,
+      isVerified: false,
+      isBanned: false,
+      suspiciousActivityCount: 0,
       createdAt: new Date()
     };
 
@@ -87,7 +93,10 @@ router.post('/signup', async (req, res) => {
         email: user.email,
         role: user.role,
         stellarPublicKey: user.stellarPublicKey,
-        funded: user.funded
+        funded: user.funded,
+        isVerified: user.isVerified,
+        isBanned: user.isBanned,
+        suspiciousActivityCount: user.suspiciousActivityCount
       }
     });
   } catch (error) {
@@ -137,7 +146,10 @@ router.post('/login', async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        stellarPublicKey: user.stellarPublicKey
+        stellarPublicKey: user.stellarPublicKey,
+        isVerified: user.isVerified || false,
+        isBanned: user.isBanned || false,
+        suspiciousActivityCount: user.suspiciousActivityCount || 0
       }
     });
   } catch (error) {
@@ -148,5 +160,50 @@ router.post('/login', async (req, res) => {
 
 // Export users for other routes
 router.getUsers = () => users;
+
+// Report suspicious activity
+router.post('/report-suspicious', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = users.find(u => u.id === userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    user.suspiciousActivityCount = (user.suspiciousActivityCount || 0) + 1;
+    
+    // Auto-ban if suspicious activity count >= 3
+    if (user.suspiciousActivityCount >= 3) {
+      user.isBanned = true;
+    }
+    
+    res.json({ 
+      success: true, 
+      suspiciousActivityCount: user.suspiciousActivityCount,
+      isBanned: user.isBanned
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to report suspicious activity' });
+  }
+});
+
+// Verify merchant
+router.post('/verify-merchant', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = users.find(u => u.id === userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    user.isVerified = true;
+    
+    res.json({ success: true, isVerified: user.isVerified });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to verify merchant' });
+  }
+});
 
 module.exports = router;

@@ -74,28 +74,11 @@ export default function QRScannerPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden">
-      {/* Animated Stars */}
-      <div className="absolute inset-0">
-        {Array.from({ length: 50 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-orange-400 rounded-full animate-pulse"
-            style={{
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
 
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center p-6">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-lg">🚀</span>
-          </div>
-          <span className="text-white text-xl font-semibold">StellarBridge Pay</span>
+          <span className="text-white text-3xl font-bold tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '-0.02em' }}>StellarBridge Pay</span>
         </div>
         <button
           onClick={() => router.push('/dashboard')}
@@ -121,7 +104,7 @@ export default function QRScannerPage() {
           {/* Scan with Camera */}
           <button
             onClick={() => setShowCamera(true)}
-            className="group relative bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-3xl p-8 transition-all duration-300 transform hover:scale-105 shadow-2xl"
+            className="group relative bg-orange-900/50 hover:bg-orange-900/70 rounded-3xl p-8 transition-all duration-300 border border-orange-700/50 shadow-lg"
           >
             <div className="flex flex-col items-center space-y-6">
               <div className="w-24 h-24 bg-orange-400/30 rounded-full flex items-center justify-center">
@@ -158,10 +141,10 @@ export default function QRScannerPage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isProcessing}
-            className="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-3xl p-8 transition-all duration-300 transform hover:scale-105 shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group relative bg-orange-900/50 hover:bg-orange-900/70 rounded-3xl p-8 transition-all duration-300 border border-orange-700/50 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center space-y-6">
-              <div className="w-24 h-24 bg-blue-400/30 rounded-full flex items-center justify-center">
+              <div className="w-24 h-24 bg-orange-400/30 rounded-full flex items-center justify-center">
                 {isProcessing ? (
                   <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
@@ -174,7 +157,7 @@ export default function QRScannerPage() {
               <h2 className="text-2xl font-bold text-white">
                 {isProcessing ? 'Processing...' : 'Upload QR Image'}
               </h2>
-              <p className="text-blue-100 text-center text-sm">
+              <p className="text-orange-100 text-center text-sm">
                 {isProcessing ? 'Analyzing QR code...' : 'Select a QR code image from your device'}
               </p>
             </div>
